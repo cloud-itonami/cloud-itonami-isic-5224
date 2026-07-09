@@ -1,0 +1,11 @@
+{:itonami.blueprint/id "cloud-itonami-5224"
+ :itonami.blueprint/name "Community Cargo Handling Operations"
+ :itonami.blueprint/isic-rev5 "5224"
+ :itonami.blueprint/domain :transport/cargo-handling
+ :itonami.blueprint/license "AGPL-3.0-or-later"
+ :itonami.blueprint/social-impact [:port-safety :supply-resilience :worker-safety]
+ :itonami.blueprint/governor :cargo-handling-governor
+ :itonami.blueprint/robotics true
+ :itonami.blueprint/required-technologies [:robotics :identity :forms :dmn :bpmn :audit-ledger :logistics]
+ :itonami.blueprint/optional-technologies [:optimization]
+ :itonami.blueprint/status :public-oss}

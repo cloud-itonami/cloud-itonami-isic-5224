@@ -1,0 +1,76 @@
+<html><head><meta charset="utf-8"><title>cloud-itonami-isic-5224 &middot; cargo-handling operations coordination</title><style>
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.ok { color: #137a3f; }
+body { font-family: system-ui,-apple-system,sans-serif; margin: 0; color: #1a1a1a; background: #fafafa; }
+header.bar { display: flex; align-items: center; gap: 12px; padding: 12px 20px; background: #fff; border-bottom: 1px solid #e5e5e5; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #f0f0f0; }
+h2 { margin-top: 0; font-size: 15px; }
+.warn { color: #b25c00; background: #fff8e1; padding: 2px 6px; border-radius: 4px; }
+main { max-width: 980px; margin: 24px auto; padding: 0 20px; }
+header.bar h1 { font-size: 18px; margin: 0; font-weight: 600; }
+.muted { color: #888; font-size: 13px; }
+.critical { color: #fff; background: #b3261e; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+.card { background: #fff; border: 1px solid #e5e5e5; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+.err { color: #b3261e; background: #fbe9e7; padding: 2px 6px; border-radius: 4px; }
+th { font-weight: 600; color: #555; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+header.bar .badge { margin-left: auto; font-size: 12px; color: #666; }
+code { font-size: 12px; background: #f4f4f4; padding: 1px 4px; border-radius: 3px; }
+</style></head><body>
+<header class="bar">
+  <h1>Cargo handling operations coordination (ISIC 5224) — Operator Console</h1>
+  <span class="badge">read-only sample · governor-gated · never finalizes a load-safety clearance, weight-limit override or hazmat-segregation waiver</span>
+</header>
+<main>
+  <section class="card">
+    <h2>Shipments</h2>
+    <p class="muted">Demo snapshot — build-time-generated from <code>cargohandling.store</code> via <code>cargohandling.render-html</code> (<code>clojure -M:dev:render-html</code>), regenerated nightly.</p>
+    <table>
+      <thead><tr><th>Shipment</th><th>Cargo</th><th>Weight (kg)</th><th>Hazmat class</th><th>Jurisdiction</th><th>Registration</th><th>Last op status</th></tr></thead>
+      <tbody>
+        <tr><td>shp-1</td><td>containerized general cargo</td><td>18500</td><td>&mdash;</td><td>JPN</td><td><span class="ok">registered &amp; verified</span></td><td><span class="ok">committed</span></td></tr>
+        <tr><td>shp-2</td><td>palletized machinery parts</td><td>9200</td><td>&mdash;</td><td>JPN</td><td><span class="warn">registered, unverified</span></td><td><span class="critical">HARD hold &middot; shipment unverified</span></td></tr>
+        <tr><td>shp-3</td><td>bulk chemical drums</td><td>4200</td><td>8</td><td>JPN</td><td><span class="err">not registered</span></td><td><span class="muted">no activity</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+  <section class="card">
+    <h2>Facilities</h2>
+    <p class="muted">Cranes, docks and warehouse bays targeted by <code>:coordinate-equipment-maintenance</code> (a facility-level op, independently re-verified against the facility record, not a per-shipment record).</p>
+    <table>
+      <thead><tr><th>Facility</th><th>Name</th><th>Kind</th><th>Jurisdiction</th><th>Registration</th><th>Last op status</th></tr></thead>
+      <tbody>
+        <tr><td>fac-1</td><td>Gantry Crane 4</td><td>crane</td><td>JPN</td><td><span class="ok">registered</span></td><td><span class="ok">committed</span></td></tr>
+        <tr><td>fac-2</td><td>Warehouse B Reefer Dock</td><td>warehouse</td><td>JPN</td><td><span class="err">not registered</span></td><td><span class="critical">HARD hold &middot; facility unregistered</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+  <section class="card">
+    <h2>Action gate (Cargo Handling Governor)</h2>
+    <p class="muted">HARD holds cannot be overridden. This actor is an operations-coordination layer, never a load-safety authority — no op in its closed allowlist can finalize a load-safety clearance, override a weight-limit rule or waive a hazmat-segregation rule.</p>
+    <table>
+      <thead><tr><th>Op</th><th>Gate</th></tr></thead>
+      <tbody>
+        <tr><td><code>:log-cargo-record</code></td><td><span class="ok">phase-3 auto when clean &middot; administrative logging only</span></td></tr>
+        <tr><td><code>:schedule-handling-operation</code></td><td><span class="warn">ALWAYS human approval &middot; real resource commitment</span></td></tr>
+        <tr><td><code>:flag-cargo-safety-concern</code></td><td><span class="warn">ALWAYS human approval &middot; never auto, any phase</span></td></tr>
+        <tr><td><code>:coordinate-equipment-maintenance</code></td><td><span class="warn">ALWAYS human approval &middot; real maintenance dispatch</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+  <section class="card">
+    <h2>Audit ledger (this run)</h2>
+    <p class="muted">Append-only decision-fact log — every proposal, hold and commit this scenario produced.</p>
+    <table>
+      <thead><tr><th>Fact</th><th>Op</th><th>Target</th><th>Basis</th></tr></thead>
+      <tbody>
+        <tr><td>committed</td><td><code>log-cargo-record</code></td><td>shp-1</td><td>commit</td></tr>
+        <tr><td>committed</td><td><code>schedule-handling-operation</code></td><td>shp-1</td><td>commit</td></tr>
+        <tr><td>committed</td><td><code>flag-cargo-safety-concern</code></td><td>shp-1</td><td>commit</td></tr>
+        <tr><td>committed</td><td><code>coordinate-equipment-maintenance</code></td><td>fac-1</td><td>commit</td></tr>
+        <tr><td>governor-hold</td><td><code>log-cargo-record</code></td><td>shp-2</td><td>shipment-unverified</td></tr>
+        <tr><td>governor-hold</td><td><code>coordinate-equipment-maintenance</code></td><td>fac-2</td><td>facility-unregistered</td></tr>
+      </tbody>
+    </table>
+  </section>
+</main>
+</body></html>

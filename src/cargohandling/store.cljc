@@ -178,9 +178,6 @@
                        :cargo/seq :schedule/seq :maintenance/seq :concern/seq
                        :sequence/key]))
 
-(defn- enc [v] (ls/enc v))
-(defn- dec* [s] (ls/dec* s))
-
 (def ^:private shipment-spec
   {:id {:attr :shipment/id}
    :cargo-desc {:attr :shipment/cargo-desc}
@@ -224,19 +221,19 @@
   (ledger [_]
     (->> (d/q '[:find ?s ?f :where [?e :ledger/seq ?s] [?e :ledger/fact ?f]] (d/db conn))
          (sort-by first)
-         (mapv (comp dec* second))))
+         (mapv (comp ls/dec* second))))
   (cargo-log [_]
     (->> (d/q '[:find ?s ?r :where [?e :cargo/seq ?s] [?e :cargo/record ?r]] (d/db conn))
-         (sort-by first) (mapv (comp dec* second))))
+         (sort-by first) (mapv (comp ls/dec* second))))
   (schedule-log [_]
     (->> (d/q '[:find ?s ?r :where [?e :schedule/seq ?s] [?e :schedule/record ?r]] (d/db conn))
-         (sort-by first) (mapv (comp dec* second))))
+         (sort-by first) (mapv (comp ls/dec* second))))
   (maintenance-log [_]
     (->> (d/q '[:find ?s ?r :where [?e :maintenance/seq ?s] [?e :maintenance/record ?r]] (d/db conn))
-         (sort-by first) (mapv (comp dec* second))))
+         (sort-by first) (mapv (comp ls/dec* second))))
   (concern-log [_]
     (->> (d/q '[:find ?s ?r :where [?e :concern/seq ?s] [?e :concern/record ?r]] (d/db conn))
-         (sort-by first) (mapv (comp dec* second))))
+         (sort-by first) (mapv (comp ls/dec* second))))
   (next-sequence [_ jurisdiction kind]
     (or (d/q '[:find ?n . :in $ ?k
               :where [?e :sequence/key ?k] [?e :sequence/next ?n]]
@@ -271,12 +268,12 @@
                         :maintenance (count (maintenance-log s)) :concern (count (concern-log s)))]
         (d/transact! conn
                      [{:sequence/key (seq-key jurisdiction kind) :sequence/next next-n}
-                      {seq-attr log-count rec-attr (enc (get result "record"))}])
+                      {seq-attr log-count rec-attr (ls/enc (get result "record"))}])
         result)
       nil)
     s)
   (append-ledger! [s fact]
-    (d/transact! conn [{:ledger/seq (count (ledger s)) :ledger/fact (enc fact)}])
+    (d/transact! conn [{:ledger/seq (count (ledger s)) :ledger/fact (ls/enc fact)}])
     fact)
   (with-shipments [s shipments]
     (when (seq shipments) (d/transact! conn (mapv shipment->tx (vals shipments)))) s)

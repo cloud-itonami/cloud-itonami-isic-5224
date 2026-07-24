@@ -53,6 +53,21 @@
                                        otherwise-legitimate proposal's
                                        own text.
 
+  A fifth, SOFT (escalate-only, never a hold) check was added
+  additively for `:log-cargo-record` (ADR-2800002100): when the target
+  shipment's own record carries an OPTIONAL `:shipment/handoff` --
+  provenance/audit-trail data the upstream storage-terminal actor
+  `cloud-itonami-isic-5210` (petroleum/bulk storage) may attach when it
+  transfers custody of stock to this actor -- and that handoff IS
+  present but is either structurally malformed or declares a
+  `:handoff/source-actor` this actor does not recognize as a
+  registered upstream storage terminal, the proposal escalates to a
+  human instead of auto-committing (never held). Absence of a
+  `:shipment/handoff` is completely normal and is never flagged -- see
+  `storage-handoff-suspect-escalation` below and
+  `cargohandling.registry`'s `handoff-record-well-formed?`/
+  `storage-handoff-source-actor-known?`.
+
   ONE known self-tripping bug class this check is written to AVOID
   (multiple sibling `cloud-itonami-isic-*` actors in this fleet
   independently hit and fixed the SAME bug): phrasing an exclusion
@@ -74,7 +89,8 @@
   high-stakes) -- see `cargohandling.phase` for the belt-and-suspenders
   second layer: `:flag-cargo-safety-concern` is never a member of any
   phase's `:auto` set either."
-  (:require [cargohandling.store :as store]))
+  (:require [cargohandling.store :as store]
+            [cargohandling.registry :as registry]))
 
 (def confidence-floor 0.6)
 
@@ -182,28 +198,68 @@
       [{:rule :finalize-load-safety-attempt
         :detail "提案テキストが積荷/荷役安全クリアランスの確定アクションを含んでいます -- 恒久ブロック"}])))
 
+;; ----------------------------- SOFT check (escalate, not hold) -----------------------------
+
+(defn- storage-handoff-suspect-escalation
+  "SOFT -- only evaluated for :log-cargo-record, and only when the
+  target shipment's own record actually carries a :shipment/handoff map
+  (ADR-2800002100). Absence is never flagged: attaching a :handoff to a
+  shipment is an entirely OPTIONAL provenance/audit-trail attachment
+  from the upstream storage-terminal actor (cloud-itonami-isic-5210)
+  that transferred custody of the stock, not a precondition of logging
+  a cargo record. Escalates (never holds) when the handoff IS present
+  but is either structurally malformed
+  (`cargohandling.registry/handoff-record-well-formed?` false) or
+  declares a `:handoff/source-actor` this actor does not recognize as a
+  registered upstream storage terminal
+  (`cargohandling.registry/storage-handoff-source-actor-known?`
+  false)."
+  [{:keys [op target-id]} st]
+  (when (= op :log-cargo-record)
+    (let [s (store/shipment st target-id)
+          handoff (:shipment/handoff s)]
+      (when (map? handoff)
+        (when-not (and (registry/handoff-record-well-formed? handoff)
+                       (registry/storage-handoff-source-actor-known?
+                        (:handoff/source-actor handoff)))
+          [{:rule :storage-handoff-suspect
+            :detail (str target-id " のshipmentに添付された:shipment/handoffが構造不整合、"
+                         "または登録済みsource-actorでない(ADR-2800002100)")}])))))
+
 ;; ----------------------------- decision logic -----------------------------
 
 (defn check
   "Censors a CargoHandlingAdvisor proposal against the governor rules.
-  Returns {:ok? bool :violations [..] :confidence c :escalate? bool
-  :high-stakes? bool :hard? bool}."
+  Returns {:ok? bool :violations [..] :soft-violations [..] :confidence c
+  :escalate? bool :high-stakes? bool :hard? bool}.
+
+  `:violations` (`hard`) are the four un-overridable HOLDs above,
+  unchanged. `:soft-violations` are additional, independently-detected
+  concerns (currently just `:storage-handoff-suspect`) that are NOT
+  grounds for a hold but DO force `:escalate?` true even when every
+  hard check passes, confidence is high, and the op is not itself
+  high-stakes -- same effect as low confidence, kept in a separate key
+  so `:violations` keeps meaning exactly what it always has (a hard,
+  un-overridable hold reason)."
   [request _context proposal st]
   (let [hard (into []
                    (concat (shipment-unverified-violations request st)
                            (effect-not-propose-violations proposal)
                            (closed-allowlist-violations proposal)
                            (finalize-load-safety-violations proposal)))
+        soft (into [] (concat (storage-handoff-suspect-escalation request st)))
         conf (:confidence proposal 0.0)
         low? (< conf confidence-floor)
         stakes? (boolean (high-stakes (:op request)))
-        hard? (boolean (seq hard))]
-    {:ok?          (and (not hard?) (not low?) (not stakes?))
-     :violations   hard
-     :confidence   conf
-     :hard?        hard?
-     :escalate?    (and (not hard?) (or low? stakes?))
-     :high-stakes? stakes?}))
+        hard? (boolean (seq hard))
+        soft? (boolean (seq soft))]
+    {:ok?             (and (not hard?) (not low?) (not stakes?) (not soft?))
+     :violations      hard
+     :soft-violations soft
+     :confidence      conf
+     :hard?           hard?
+     :escalate?       (and (not hard?) (or low? stakes? soft?))
+     :high-stakes?    stakes?}))
 
 (defn hold-fact
   "The audit fact written when a proposal is rejected (HOLD)."

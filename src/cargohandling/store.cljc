@@ -24,7 +24,13 @@
                      description, gross weight, hazmat class if any).
                      Targeted by `:log-cargo-record`,
                      `:schedule-handling-operation` and
-                     `:flag-cargo-safety-concern`.
+                     `:flag-cargo-safety-concern`. MAY carry an
+                     optional `:shipment/handoff` (the upstream
+                     storage-terminal actor's own outbound `:handoff`
+                     record, passed through unchanged -- see
+                     `cargohandling.registry`'s Inbound Cross-Actor
+                     Handoff section and `cargohandling.governor`'s
+                     `storage-handoff-suspect-escalation`, ADR-2800002100).
     - `facility`  -- a crane/dock/warehouse record (gantry crane, reach
                      stacker, quay berth, warehouse bay, etc.).
                      Targeted by `:coordinate-equipment-maintenance` (a

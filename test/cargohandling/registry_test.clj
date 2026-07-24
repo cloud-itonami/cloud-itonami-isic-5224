@@ -46,3 +46,42 @@
   (let [r (registry/register-cargo-record "shp-1" "JPN" 0)]
     (is (= [(get r "record")] (registry/append [] r)))
     (is (= [:x (get r "record")] (registry/append [:x] r)))))
+
+;; ─────── Inbound Cross-Actor Handoff (optional, isic-5210 -> isic-5224) ───────
+
+(def ^:private well-formed-handoff
+  {:handoff/id "h-1"
+   :handoff/source-actor "cloud-itonami-isic-5210"
+   :handoff/batch-id "batch-001"
+   :handoff/product-type-id :petroleum/diesel
+   :handoff/quantity-kg 120.5
+   :handoff/dispatched-at-iso "2026-07-24T00:00:00Z"})
+
+(deftest handoff-record-well-formed-test
+  (testing "complete handoff passes"
+    (is (true? (registry/handoff-record-well-formed? well-formed-handoff))))
+
+  (testing "missing :handoff/quantity-kg fails"
+    (is (false? (registry/handoff-record-well-formed? (dissoc well-formed-handoff :handoff/quantity-kg)))))
+
+  (testing "non-positive quantity fails"
+    (is (false? (registry/handoff-record-well-formed? (assoc well-formed-handoff :handoff/quantity-kg 0)))))
+
+  (testing "blank batch-id fails"
+    (is (false? (registry/handoff-record-well-formed? (assoc well-formed-handoff :handoff/batch-id "")))))
+
+  (testing "blank source-actor fails"
+    (is (false? (registry/handoff-record-well-formed? (assoc well-formed-handoff :handoff/source-actor "")))))
+
+  (testing "nil handoff fails"
+    (is (false? (registry/handoff-record-well-formed? nil)))))
+
+(deftest storage-handoff-source-actor-known-test
+  (testing "the registered upstream storage-terminal actor is known"
+    (is (true? (registry/storage-handoff-source-actor-known? "cloud-itonami-isic-5210"))))
+
+  (testing "an unregistered source-actor is not known"
+    (is (false? (registry/storage-handoff-source-actor-known? "cloud-itonami-isic-9999"))))
+
+  (testing "nil source-actor is not known"
+    (is (false? (registry/storage-handoff-source-actor-known? nil)))))

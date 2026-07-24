@@ -87,3 +87,52 @@
 
 (defn append [history result]
   (conj (vec history) (get result "record")))
+
+;; ─────── Inbound Cross-Actor Handoff (optional, isic-5210 -> isic-5224) ───────
+;;
+;; A `shipment` record MAY OPTIONALLY carry a `:shipment/handoff` map
+;; when the upstream storage-terminal actor (cloud-itonami-isic-5210,
+;; petroleum/bulk storage) transferred custody of the stock to this
+;; actor. Reuses the SAME `:handoff/*` wire shape already established
+;; fleet-wide by the isic-1075<->jsic-4721 handoff (superproject ADR-
+;; 2607177600, extended by ADR-2800000500/2800000700/2800000800) --
+;; documented for this actor pair by superproject ADR-2800002100. A
+;; `:shipment/handoff` is OPTIONAL, not required: every existing
+;; shipment record and every existing `:log-cargo-record` call keeps
+;; working unchanged with no `:shipment/handoff` attached at all --
+;; absence is never flagged (see `cargohandling.governor`'s
+;; `storage-handoff-suspect-escalation`, a SOFT check, never a HARD
+;; hold).
+;;
+;;   {:handoff/id "..."
+;;    :handoff/source-actor "cloud-itonami-isic-5210"
+;;    :handoff/batch-id "..."
+;;    :handoff/product-type-id :some/keyword-or-string
+;;    :handoff/quantity-kg 120.5
+;;    :handoff/dispatched-at-iso "..."}
+
+(defn handoff-record-well-formed?
+  "Positive-sense convenience predicate: does `handoff` carry every
+  REQUIRED `:handoff/*` field (id/source-actor/batch-id/product-type-id/
+  quantity-kg/dispatched-at-iso) with a plausible value (quantity-kg a
+  positive number, the string fields non-blank)? Never validates the
+  OPTIONAL cold-chain/unspsc/gtin/carrier pass-through fields."
+  [handoff]
+  (boolean
+   (and (map? handoff)
+        (seq (:handoff/id handoff))
+        (seq (:handoff/source-actor handoff))
+        (seq (:handoff/batch-id handoff))
+        (some? (:handoff/product-type-id handoff))
+        (number? (:handoff/quantity-kg handoff))
+        (pos? (:handoff/quantity-kg handoff))
+        (seq (:handoff/dispatched-at-iso handoff)))))
+
+(def storage-handoff-source-actors
+  "Which upstream cloud-itonami actors this cargo-handling actor recognizes
+  as a legitimate :handoff/source-actor for an inbound consignment (ADR-2800002100)."
+  #{"cloud-itonami-isic-5210"})
+
+(defn storage-handoff-source-actor-known?
+  [source-actor]
+  (boolean (contains? storage-handoff-source-actors source-actor)))

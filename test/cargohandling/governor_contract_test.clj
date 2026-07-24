@@ -168,3 +168,60 @@
       (exec-op actor "b" {:op :log-cargo-record :target-id "shp-2" :detail "y"} operator)
       (is (= 2 (count (store/ledger db)))
           "one commit + one hold, both recorded"))))
+
+;; ────────────── Inbound Cross-Actor Handoff -- SOFT escalation, not hold (ADR-2800002100) ──────────────
+
+(def ^:private well-formed-handoff
+  {:handoff/id "h-1"
+   :handoff/source-actor "cloud-itonami-isic-5210"
+   :handoff/batch-id "batch-001"
+   :handoff/product-type-id :petroleum/diesel
+   :handoff/quantity-kg 120.5
+   :handoff/dispatched-at-iso "2026-07-24T00:00:00Z"})
+
+(defn- db-with-shipment-handoff
+  "A fresh seeded MemStore with `handoff` merged onto shp-1's own
+  record (shp-1 is already :registered? true / :verified? true in the
+  demo data, so this isolates the handoff check from the pre-existing
+  shipment-unverified check)."
+  [handoff]
+  (let [db (store/seed-db)]
+    (store/commit-record! db {:effect :shipment/upsert
+                               :value {:id "shp-1" :shipment/handoff handoff}})
+    db))
+
+(defn- log-cargo-record-verdict [db]
+  (governor/check {:op :log-cargo-record :target-id "shp-1"}
+                  {:actor-id "op-1"}
+                  {:operation :log-cargo-record :effect :propose
+                   :target-id "shp-1" :confidence 0.95}
+                  db))
+
+(deftest storage-handoff-suspect-escalation-test
+  (testing "no :shipment/handoff at all does not trigger this rule -- absence is normal"
+    (let [verdict (log-cargo-record-verdict (store/seed-db))]
+      (is (false? (:hard? verdict)))
+      (is (false? (:escalate? verdict)))
+      (is (not (some #(= (:rule %) :storage-handoff-suspect) (:soft-violations verdict))))))
+
+  (testing "well-formed handoff from the registered upstream storage-terminal actor does not trigger this rule"
+    (let [verdict (log-cargo-record-verdict (db-with-shipment-handoff well-formed-handoff))]
+      (is (false? (:hard? verdict)))
+      (is (false? (:escalate? verdict)))
+      (is (not (some #(= (:rule %) :storage-handoff-suspect) (:soft-violations verdict))))))
+
+  (testing "handoff from an unrecognized source-actor escalates, not holds"
+    (let [db (db-with-shipment-handoff (assoc well-formed-handoff
+                                               :handoff/source-actor "cloud-itonami-isic-9999"))
+          verdict (log-cargo-record-verdict db)]
+      (is (false? (:hard? verdict)) "unrecognized source-actor is never a HARD hold")
+      (is (true? (:escalate? verdict)))
+      (is (some #(= (:rule %) :storage-handoff-suspect) (:soft-violations verdict)))
+      (is (empty? (:violations verdict)) "the hard :violations key stays untouched by this SOFT check")))
+
+  (testing "malformed handoff (missing :handoff/quantity-kg) escalates, not holds"
+    (let [db (db-with-shipment-handoff (dissoc well-formed-handoff :handoff/quantity-kg))
+          verdict (log-cargo-record-verdict db)]
+      (is (false? (:hard? verdict)) "a malformed handoff is never a HARD hold")
+      (is (true? (:escalate? verdict)))
+      (is (some #(= (:rule %) :storage-handoff-suspect) (:soft-violations verdict))))))

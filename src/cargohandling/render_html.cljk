@@ -6,7 +6,7 @@
   no generator at all. This namespace drives the REAL actor stack
   (`cargohandling.operation` -> `cargohandling.governor` ->
   `cargohandling.store`) through a scenario adapted from this repo's own
-  `cargohandling.sim` demo driver (`clojure -M:dev:run`, confirmed before
+  `cargohandling.sim` demo driver (`kbb -M:dev:run`, confirmed before
   this file was written to run correctly against the real seeded
   shipment/facility directory -- ids `shp-1`/`shp-2`/`shp-3`/`fac-1`/
   `fac-2` all exist in `cargohandling.store/demo-data`, so, unlike
@@ -36,7 +36,7 @@
   HARD hold; it exercises exactly the two rule keywords a real request
   can trip.
 
-  Usage: `clojure -M:dev:render-html [out-file]`
+  Usage: `kbb -M:dev:render-html [out-file]`
   (default `docs/samples/operator-console.html`)."
   (:require [jp-go-dds.skin]
             [kotoba.lang.text :as str]
@@ -177,7 +177,7 @@
      "<main>\n"
      "  <section class=\"card\">\n"
      "    <h2>Shipments</h2>\n"
-     "    <p class=\"muted\">Demo snapshot — build-time-generated from <code>cargohandling.store</code> via <code>cargohandling.render-html</code> (<code>clojure -M:dev:render-html</code>), regenerated nightly.</p>\n"
+     "    <p class=\"muted\">Demo snapshot — build-time-generated from <code>cargohandling.store</code> via <code>cargohandling.render-html</code> (<code>kbb -M:dev:render-html</code>), regenerated nightly.</p>\n"
      "    <table>\n"
      "      <thead><tr><th>Shipment</th><th>Cargo</th><th>Weight (kg)</th><th>Hazmat class</th><th>Jurisdiction</th><th>Registration</th><th>Last op status</th></tr></thead>\n"
      "      <tbody>\n"

@@ -1,5 +1,5 @@
 (ns cargohandling.sim
-  "Demo driver -- `clojure -M:dev:run`. Walks a clean shipment through
+  "Demo driver -- `kbb -M:dev:run`. Walks a clean shipment through
   cargo-record logging (auto-commits at phase 3) -> crane/dock/
   warehouse handling scheduling (escalates/approve/commit) -> a
   cargo-safety-concern flag (ALWAYS escalates/approve/commit) ->

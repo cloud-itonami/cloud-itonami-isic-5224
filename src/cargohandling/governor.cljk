@@ -80,7 +80,7 @@
   phrased as the FINALIZATION/EXECUTION ACTION ('finalize the
   load-safety clearance', 'override the weight-limit rule', 'waive the
   hazmat-segregation rule'), never the bare noun --
-  `test/cargohandling/scope_exclusion_test.clj` asserts directly that
+  `test/cargohandling/scope_exclusion_test.cljk` asserts directly that
   every one of `cargohandling.advisor`'s four default proposals passes
   this check cleanly.
 

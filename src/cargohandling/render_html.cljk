@@ -29,7 +29,7 @@
   ops, and its rationale text is deliberately phrased to never match the
   scope-exclusion patterns -- see `cargohandling.governor` and
   `cargohandling.advisor` docstrings, and
-  `test/cargohandling/scope_exclusion_test.clj`). `cargohandling.sim`
+  `test/cargohandling/scope_exclusion_test.cljk`). `cargohandling.sim`
   itself only reaches those via a *direct* `governor/check` call with a
   hand-built proposal, not via `exec!` through the actor -- this renderer
   does not invent an op or a proposal to manufacture a third exec!-path

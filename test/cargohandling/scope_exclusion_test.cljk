@@ -15,7 +15,7 @@
   `:finalize-load-safety-attempt`, for every target (including the
   unverified/unregistered ones, which SHOULD hold on other rules but
   must never additionally trip the scope-exclusion check)."
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [kotoba.test :refer [deftest is testing]]
             [cargohandling.store :as store]
             [cargohandling.advisor :as advisor]
             [cargohandling.governor :as governor]))

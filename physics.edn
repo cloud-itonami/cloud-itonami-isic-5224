@@ -1,0 +1,35 @@
+;; What this vertical's robot physically does, declared for
+;; kotoba.robotics.process (kotoba-lang/robotics). `kbb -M:dev:physics` runs it.
+;;
+;; README "Robotics premise": for cargo handling / stevedoring (ISIC 5224)
+;; robots are gantry cranes, reach-stackers, forklifts and container
+;; lashing/unlashing units, gated by the Cargo Handling Governor. Physical
+;; work modelled here: a reach-stacker carrying a laden container from the
+;; quay apron to the stack, and a lashing robot fitting lashing bars and
+;; twistlocks on deck.
+;;
+;; Every number without a cited source is marked `estimate` in its :basis.
+;; Replacing an estimate with a sourced value is this bot's growth work.
+{:physics/schema "itonami.physical-ai.spec.v1"
+ :repo "cloud-itonami/cloud-itonami-isic-5224"
+ :cases
+ [{:id :reach-stacker-laden-box
+   :kind :transport
+   :procedure "reach-stacker carries a laden 20 ft container (30 t), boom lowered, 150 m from the quay apron to the yard stack"
+   :params {:mass-kg 70000.0 :distance-m 150.0 :v-max-mps 4.0 :a-max-mps2 0.6
+            :payload-kg 30000.0 :drive-force-n 90000.0 :crr 0.02
+            :cog-height-m 1.6 :support-half-length-m 1.5 :payload-cog-height-m 3.2
+            :max-time-s 1800.0}
+   :sweep {:param :brake-decel-mps2 :values [1.0 2.0 3.0 4.0 5.0]}
+   :quantity :min-tipover-margin
+   :limit {:min 0.4 :basis "estimate: keep 40 % of the longitudinal tip-over margin when braking with a 30 t box; support half-length 1.5 m because the laden centre of gravity sits close to the front axle"}
+   :boundary {:lo 0.5 :hi 6.0}}
+  {:id :lashing-bar-fit
+   :kind :manipulator
+   :procedure "lashing robot lifts a lashing bar from the deck rack and hooks its head into the corner casting of a second-tier container"
+   :params {:l1-m 1.10 :l2-m 1.00 :m1-kg 22.0 :m2-kg 15.0
+            :from [1.20 0.10] :to [0.80 1.80] :duration-s 3.0 :steps 500}
+   :sweep {:param :payload-kg :values [5.0 10.0 15.0 20.0 25.0]}
+   :quantity :peak-tau1-nm
+   :limit {:max 800.0 :basis "estimate: continuous shoulder torque of a long-reach ~30 kg-payload arm class"}
+   :boundary {:lo 1.0 :hi 100.0}}]}

@@ -1,5 +1,5 @@
 (ns cargohandling.registry-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [kotoba.test :refer [deftest is testing]]
             [cargohandling.registry :as registry]))
 
 (deftest register-cargo-record-drafts-a-record
